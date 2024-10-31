@@ -51,7 +51,7 @@ def config():
     args.model_short_name = 'RGC-ND-ED'
 
     args.dataset_name = 'Digital_Music_5'
-    args.dataset_path = '/home/d1/shuaijie/data/Digital_Music_5/Digital_Music_5.json'
+    args.dataset_path = '/Digital_Music_5/Digital_Music_5.json'
     args.gcn_dropout = 0.7  # 0.7
     args.ed_alpha = 1.0  # 1.0
     args.nd_alpha = 0.3  # 0.3

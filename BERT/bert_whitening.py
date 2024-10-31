@@ -48,6 +48,7 @@ args.feat_save_path = f'../checkpoint/' \
                       f'{args.pretrained_weight_shortcut}_sentence_vectors_' \
                       f'dim_{args.vec_dim}.pkl'
 
+#텍스트 데이터를 BERT가 이해할 수 있도록 벡터 입력으로 변환하는 역할을 가진 토크나이저이다.
 bert_tokenizer = BertTokenizer.from_pretrained(args.pretrained_weight_shortcut,
                                                model_max_length=args.review_max_length)
 
@@ -64,12 +65,14 @@ class ReviewDataset(Dataset):
 
         self.__pre_tokenize()
 
+    #리뷰 텍스트를 토큰화하고, 리뷰 길이를 기준으로 상위 80%길이로 제한, 최대 길이는 128
     def __pre_tokenize(self):
         self.docs = [self.tokenizer.tokenize(x)
                      for x in tqdm(self.docs, desc='pre tokenize')]
         review_length = self.top_review_length(self.docs)
         self.docs = [x[:review_length] for x in self.docs]
 
+    #특정 인덱스에 해당하는 데이터(사용자 ID, 아이템 ID, 평점, 토큰화된 리뷰)를 반환
     def __getitem__(self, idx):
         return self.user[idx], self.item[idx], self.r[idx], self.docs[idx]
 
@@ -86,14 +89,17 @@ class ReviewDataset(Dataset):
 
 
 def collate_fn(data):
+    #언패킹 연산자를 통해 각 요소를 개별 인자로 전달. zip 함수로 같은 인덱스끼리 튜플로 만든다.
     u, i, r, tokens = zip(*data)
+
+    #input_ids, token_type_ids, attention_mask를 키 값으로 가지는 딕셔너리가 리턴됨.
     encoding = bert_tokenizer(tokens, return_tensors='pt', padding=True,
                               truncation=True, is_pretokenized=True)
 
     return torch.Tensor(u), torch.Tensor(i), torch.Tensor(r), \
         encoding['input_ids'], encoding['attention_mask']
 
-
+#커널, bias 값 리턴
 def compute_kernel_bias(vecs, vec_dim):
     """计算kernel和bias
     最后的变换：y = (x + bias).dot(kernel)
@@ -107,7 +113,7 @@ def compute_kernel_bias(vecs, vec_dim):
     # return W, -mu
     return W[:, :vec_dim], -mu
 
-
+#주어진 벡터에 커널과 바이어스 값 적용, 정규화 진행
 def transform_and_normalize(vecs, kernel=None, bias=None):
     """应用变换，然后标准化
     """

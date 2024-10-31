@@ -1,0 +1,1 @@
+{"dataset_size": 64706, "train_size": 51766, "valid_size": 6470, "test_size": 6470, "rating_count": {"5": 35580, "4": 16536, "3": 6789, "2": 3010, "1": 2791}, "user_size": 5541, "item_size": 3568, "review_length": 312, "vocab_size": 43859}
