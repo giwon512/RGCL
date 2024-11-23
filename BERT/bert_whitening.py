@@ -129,6 +129,7 @@ def save_sentence_feat(params):
 
     train_data = pd.concat([train_data, valid_data, test_data])
 
+    #데이터 셋을 bert가 이해할 수 있는 토큰으로 초기화
     train_dataset = ReviewDataset(
         train_data['user_id'].tolist(),
         train_data['item_id'].tolist(),
@@ -136,13 +137,16 @@ def save_sentence_feat(params):
         train_data['review_text'].tolist(),
         bert_tokenizer
     )
-    data_loader = DataLoader(train_dataset, batch_size=128, collate_fn=collate_fn)
 
+    #훈련 데이터의 user, item, rating tensor와 토큰화된 리뷰 정보가 리턴된다.
+    data_loader = DataLoader(train_dataset, batch_size=128, collate_fn=collate_fn)
+    #bert 모델 로드, 은닉층까지 출력
     bert = BertModel.from_pretrained(params.pretrained_weight_shortcut).to(params.device)
     bert.config.output_hidden_states = True
 
     vecs = []
     for u, i, r, input_ids, mask in tqdm(data_loader):
+        #GPU로 옮겨 작업 수행
         input_ids = input_ids.to(params.device)
         mask = mask.to(params.device)  # bs * seq_len
 
