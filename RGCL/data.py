@@ -120,6 +120,10 @@ class MovieLens(object):
         valid_rating_pairs, valid_rating_values = self._generate_pair_value('valid')
         test_rating_pairs, test_rating_values = self._generate_pair_value('test')
 
+        self.train_pair = np.copy(train_rating_pairs)
+        self.valid_pair = np.copy(valid_rating_pairs)
+        self.test_pair = np.copy(test_rating_pairs)
+
         def _make_labels(ratings):
             """
             不同rating值对应id
@@ -134,6 +138,9 @@ class MovieLens(object):
                                                         add_support=True)
         self.train_dec_graph = self._generate_dec_graph(train_rating_pairs,
                                                         review_feat=self.train_review_feat)
+        
+        # self.train_neg_dec_graph = self._generate_neg_dec_graph(train_rating_pairs)
+        
         self.train_labels = _make_labels(train_rating_values)
         self.train_truths = th.FloatTensor(train_rating_values).to(device)
 
@@ -352,6 +359,41 @@ class MovieLens(object):
         #     g.nodes['movie'].data['doc'] = self.movie_doc
 
         return g
+    
+    def _generate_neg_dec_graph(self, rating_pairs, review_feat=None):
+        # 기존 rating_pairs에서 사용자 ID는 그대로 두고, 아이템 ID만 랜덤하게 섞기
+        user_ids, item_ids = rating_pairs
+
+        # 아이템 ID를 랜덤하게 섞어서 새로운 negative item ID 생성
+        neg_item_ids = np.random.permutation(item_ids)  # item_ids를 랜덤하게 섞기
+
+        # 원래의 사용자 ID와 새롭게 섞은 아이템 ID를 사용하여 새로운 rating_pairs 생성
+        neg_rating_pairs = (user_ids, neg_item_ids)
+
+        # `rating_pairs`를 사용하여 원래의 그래프 생성
+        ones = np.ones_like(user_ids)
+        
+        # negative 그래프 생성
+        neg_user_movie_ratings_coo = sp.coo_matrix(
+            (ones, neg_rating_pairs),
+            shape=(self.num_user, self.num_movie), dtype=np.float32)
+        
+        # positive와 negative 그래프를 DGL 그래프 형식으로 변환
+        neg_g = dgl.bipartite_from_scipy(neg_user_movie_ratings_coo, utype='_U', etype='_E', vtype='_V')
+
+        # positive와 negative 그래프를 heterograph로 변환
+        neg_g = dgl.heterograph({('user', 'rate', 'movie'): neg_g.edges()},
+                                num_nodes_dict={'user': self.num_user, 'movie': self.num_movie})
+        
+        # negative feature가 있다면, negative 그래프에 추가
+        if review_feat is not None:
+            ui = list(zip(neg_rating_pairs[0].tolist(), neg_rating_pairs[1].tolist()))
+            feat = [review_feat[x] for x in ui]
+            feat = torch.stack(feat, dim=0).float()
+            neg_g.edata['review_feat'] = feat
+
+        return neg_g
+
 
     @property
     def num_links(self):
