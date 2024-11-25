@@ -508,11 +508,13 @@ def evaluate(params, net, dataset, segment='valid'):
             predicted_item = neg_item[sorted_indices][:k]
 
             relevance = []
+            #중복된 유저, 아이템 쌍이 없다고 가정하고 코드 작성함
             for item in predicted_item:
                 if item in answer_item_ranking[0]:
                     index = np.where(answer_item_ranking[0] == item)
                     relevance.append((answer_item_ranking[0][index], answer_item_ranking[1][index]))
-                #else 없는 경우 처리해주어야 하는데 까먹음. 수정 요망
+                else: #아이템 예측이 틀린 경우 최하순위
+                    relevance.append((item, k))  
 
 
             nd = calculate_ndcg(relevance, k, len(interacted_item))
